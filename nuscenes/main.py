@@ -6,7 +6,8 @@ from pyquaternion import Quaternion
 
 # Build nuscenes class
 version = "v1.0-mini"
-data_root = '/home/zhang_hm/work/dataset/v1.0-mini'
+#data_root = '/home/zhang_hm/work/dataset/v1.0-mini'
+data_root = '/home/zzhang/ssd2/Zipfile/NuScenes/v1.0-mini'
 nuscenes = NuScenes(version, data_root, verbose=False)
 
 # Basic information
@@ -57,17 +58,19 @@ print(lidar_calibrator_data)
 print("Rotation matrix :{}".format(Quaternion(lidar_calibrator_data['rotation']).rotation_matrix))
 
 
-def get_matrix(calibrated_data):
+def get_matrix(calibrated_data, inverse=False):
     quaternion, translation = calibrated_data['rotation'], calibrated_data['translation']
     output = np.eye(4)
     output[:3, :3] = Quaternion(quaternion)
     output[:3, 3] = translation
+    if inverse:
+        output = np.linalg.inv(output)
     return output
 
 
 '''
-lidar_pose是基于ego而言
-point = lidar_pose @ lidar_points 代表了 lidar->ego的过程
+lidar_pose是基于ego0而言
+point = lidar_pose @ lidar_points 代表了 lidar->ego0的过程
 '''
 lidar2ego = get_matrix(lidar_calibrator_data)
 print(lidar2ego)
@@ -77,9 +80,39 @@ ego_pose0 -> global
 ego_pose就是基于global坐标系的
 ego_pose @ ego_points.T   ego->global
 '''
-ego_pose = nuscenes.get('ego_pose', lidar_sample_data['ego_pose_token'])
-ego2global = get_matrix(ego_pose)
-lidar2global = lidar2ego @ ego2global
+ego_pose0 = nuscenes.get('ego_pose', lidar_sample_data['ego_pose_token'])
+ego2global = get_matrix(ego_pose0)
+lidar2global = ego2global @ lidar2ego
+
+# lidar points to global
+# lidar points ->Nx5(x, y, z, intensity, ringindex)
+# x, y, z -> x, y, z, 1
+hom_points = np.concatenate([lidar_point[:, :3], np.ones((len(lidar_point), 1))], axis=1)
+global_points = hom_points @ lidar2global.T
 print(ego2global)
 
+"""
 
+"""
+cameras = ["CAM_BACK", "CAM_FRONT", "CAM_BACK_LEFT", "CAM_FRONT_LEFT", "CAM_BACK_RIGHT", "CAM_FRONT_RIGHT"]
+for cam in cameras:
+    camera_token = sample['data'][cam]
+    camera_data = nuscenes.get("sample_data", camera_token)
+    img_file = os.path.join(data_root, camera_data['filename'])
+    img = cv2.imread(img_file)
+    camera_ego_pose = nuscenes.get("ego_pose", camera_data["ego_pose_token"])
+    global2ego = get_matrix(camera_ego_pose, True)  # ego->global取逆矩阵 global -> ego
+    camera_calibrated = nuscenes.get("calibrated_sensor", camera_data["calibrated_sensor_token"])
+    ego2camera = get_matrix(camera_calibrated, True)  # camera->ego, -1 ego->camera
+    camera_intrinsic = np.eye(4)
+    camera_intrinsic[:3, :3] = camera_calibrated["camera_intrinsic"]
+
+    global2img = camera_intrinsic @ ego2camera @ global2ego
+
+    img_points = global_points @ global2img.T
+    img_points[:, :2] /= img_points[:, [2]]
+
+    # 过滤 z <= 0 的点，在相机后面无法投影
+    for x, y in img_points[img_points[:, :2]>0, :2].astype(int):
+        cv2.circle(img, (x, y), 3, (255, 0, 0), -1, 16)
+    cv2.imwrite(f"{cam}.jpg", img)

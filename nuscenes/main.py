@@ -12,7 +12,7 @@ nuscenes = NuScenes(version, data_root, verbose=False)
 
 # Basic information
 print("len: {}".format(len(nuscenes.sample)))
-sample = nuscenes.sample[0]
+sample = nuscenes.sample[1]
 print("sample keys: {}".format(sample.keys()))
 # print("sample: {}".format(sample))
 
@@ -61,8 +61,9 @@ print("Rotation matrix :{}".format(Quaternion(lidar_calibrator_data['rotation'])
 def get_matrix(calibrated_data, inverse=False):
     quaternion, translation = calibrated_data['rotation'], calibrated_data['translation']
     output = np.eye(4)
-    output[:3, :3] = Quaternion(quaternion)
+    output[:3, :3] = Quaternion(quaternion).rotation_matrix
     output[:3, 3] = translation
+    print("camera ego pose: {}".format(output))
     if inverse:
         output = np.linalg.inv(output)
     return output
@@ -113,6 +114,6 @@ for cam in cameras:
     img_points[:, :2] /= img_points[:, [2]]
 
     # 过滤 z <= 0 的点，在相机后面无法投影
-    for x, y in img_points[img_points[:, :2]>0, :2].astype(int):
+    for x, y in img_points[img_points[:, 2]>0, :2].astype(int):
         cv2.circle(img, (x, y), 3, (255, 0, 0), -1, 16)
     cv2.imwrite(f"{cam}.jpg", img)

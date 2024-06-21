@@ -1,0 +1,10 @@
+conda create -n argoverse2
+
+#download curl
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+#download av2
+git clone https://github.com/argoverse/av2-api
+cd av2-api
+cargo update
+pip install -e .

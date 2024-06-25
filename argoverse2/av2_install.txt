@@ -8,3 +8,23 @@ git clone https://github.com/argoverse/av2-api
 cd av2-api
 cargo update
 pip install -e .
+
+
+#Download Argoverse2 Data
+
+##Donwload s5cmd
+conda config --add channels conda-forge
+conda config --set channel_priority strict
+conda install s5cmd
+
+
+# Dataset URIs
+# s3://argoverse/datasets/av2/sensor/
+# s3://argoverse/datasets/av2/lidar/
+# s3://argoverse/datasets/av2/motion-forecasting/
+# s3://argoverse/datasets/av2/tbv/
+
+export DATASET_NAME="sensor"  # sensor, lidar, motion_forecasting or tbv.
+export TARGET_DIR="$HOME/data/datasets"  # Target directory on your machine.
+
+s5cmd --no-sign-request cp "s3://argoverse/datasets/av2/$DATASET_NAME/*" $TARGET_DIR

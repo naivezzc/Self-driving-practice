@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     print(f"predict shape: {predict.shape}")
 
-    fig, axs = plt.subplots(4, 1, figsize=(20, 10))
+    fig, axs = plt.subplots(3, 1, figsize=(20, 10))
     axs[0].imshow(gt_depth,cmap=plt.get_cmap('inferno_r'))
     axs[0].axis('off')
     axs[0].set_title('gt_depth')
@@ -45,12 +45,12 @@ if __name__ == "__main__":
     axs[1].axis('off')
     axs[1].set_title('predict')
 
-    axs[2].imshow(np.transpose(aug_img, (1, 2, 0)))
-    axs[2].axis('off')
-    axs[2].set_title('Augmented img')
+    # axs[2].imshow(np.transpose(aug_img, (1, 2, 0)))
+    # axs[2].axis('off')
+    # axs[2].set_title('Augmented img')
 
-    axs[3].imshow(img)
-    axs[3].axis('off')
-    axs[3].set_title('img')
+    axs[2].imshow(img)
+    axs[2].axis('off')
+    axs[2].set_title('img')
 
     plt.show()

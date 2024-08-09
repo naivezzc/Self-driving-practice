@@ -4,7 +4,7 @@ parser = argparse.ArgumentParser(description='Laplacian Depth Residual Network t
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Directory setting
-parser.add_argument('--weights',type=str, default = './wesights/unet_add_mask.pth')
+parser.add_argument('--weights',type=str, default = './weights/unet_add_mask.pth')
 parser.add_argument('--log_dir',type=str, default = './log/')
 parser.add_argument('--model_dir',type=str, default = './weights')
 parser.add_argument('--trainfile_kitti', type=str, default = "./datasets/eigen_train_files_with_gt_dense.txt")

@@ -2,6 +2,8 @@
 
 ## Introduction
 
+![demo](docs/demo.png)
+
 ## Setup
 This software depends on the following Python packages:
 ```

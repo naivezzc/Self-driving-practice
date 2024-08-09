@@ -2,7 +2,7 @@
 
 ## Introduction
 
-![demo](docs/demo.png)
+<img src="docs/demo.png" width="300">
 
 ## Setup
 This software depends on the following Python packages:

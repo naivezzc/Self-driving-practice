@@ -2,7 +2,16 @@
 
 ## Introduction
 
-<img src="docs/demo.png" width="300">
+<div style="display: flex; justify-content: space-between;">
+  <div style="text-align: center;">
+    <p>Unet</p>
+    <img src="docs/demo.png" width="300">
+  </div>
+  <div style="text-align: center;">
+    <p>Mobile Unet</p>
+    <img src="docs/mobile_unet.png" width="300">
+  </div>
+</div>
 
 ## Setup
 This software depends on the following Python packages:

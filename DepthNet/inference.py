@@ -1,6 +1,7 @@
 from configs.option import args
 from datasets.kittydata import MyDataset
 from models.unet import UNet
+from models.mobile_unet import MobileV3Unet
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +21,8 @@ if __name__ == "__main__":
 
     # print(filename)
 
-    model = UNet(in_channels=3, num_classes=1).to(device)
+    # model = UNet(in_channels=3, num_classes=1).to(device)
+    model = MobileV3Unet(num_classes=1).to(device)
     state_dict = torch.load(weight_path, map_location=device)
     model.load_state_dict(state_dict)
     model.eval()

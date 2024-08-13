@@ -1,5 +1,6 @@
 import torch
 from models.unet import UNet
+from models.mobile_unet import MobileV3Unet
 from loss.depth_loss import DepthLoss, Masked_depthLoss
 from configs.option import args
 from datasets.kittydata import MyDataset
@@ -47,7 +48,8 @@ if __name__ == "__main__":
     num_epochs = args.epochs
     lr = args.lr
 
-    model = UNet(in_channels=3, num_classes=1).to(device)
+    # model = UNet(in_channels=3, num_classes=1).to(device)
+    model = MobileV3Unet(num_classes=1).to(device)
     if mask_flag == False:
         criterion = DepthLoss()
     else:

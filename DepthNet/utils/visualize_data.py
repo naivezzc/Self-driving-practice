@@ -8,7 +8,7 @@ if __name__ == "__main__":
     args.dataset = "KITTI"
     args.trainfile_kitti = "../datasets/eigen_train_files_with_gt_dense.txt"
     train_set = MyDataset(args, train=True)
-    img, gt_depth, _ = train_set[0]
+    img, gt_depth, _ = train_set[6]
     dense_depth = interpolate_depth_map(gt_depth)
     print(f'img shape: {img.shape},  gt_depth shape: {gt_depth.shape}, dense depth shape: {dense_depth.shape}')
     print(f" length of training set: {len(train_set)}")

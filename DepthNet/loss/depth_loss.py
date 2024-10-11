@@ -191,4 +191,4 @@ def silog_loss(prediction: Tensor, target: Tensor, variance_focus: float = 0.85)
     n = target[non_zero_mask].shape[0]
 
     # return torch.sqrt((d ** 2).mean() - variance_focus * (d.mean() ** 2)) * 10.0
-    return torch.sqrt((d ** 2).mean() - variance_focus * 1 / (n**2) * (d.sum() ** 2)) * 10.0
+    return torch.sqrt((d ** 2).mean() - variance_focus * 1 / (n**2) * (d.sum() ** 2)) * 100

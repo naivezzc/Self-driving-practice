@@ -1,6 +1,7 @@
 import torch
 from models.unet import UNet
 from models.mobile_unet import MobileV3Unet
+from models.unet_attention import UNetWithCrossAttention
 from loss.depth_loss import DepthLoss, Masked_depthLoss
 from configs.option import args
 from datasets.kittydata import MyDataset
@@ -12,16 +13,17 @@ import json
 
 def train(model, dataloader, criterion, optimizer, device, epoch, num_epochs, mask_flag = False):
     model.train()
+    model.to(device)
     running_loss = 0.0
     sum_loss = 0.0
     progress_bar = tqdm(dataloader, desc=f"Epoch {epoch} / {num_epochs}")
     for i, data in enumerate(progress_bar):
-        inputs, targets, _ = data
-        inputs, targets = inputs.to(device), targets.to(device)
+        inputs, targets, _, crop_img, crop_gt = data
+        inputs, targets, crop_img, crop_gt = inputs.to(device), targets.to(device), crop_img.to(device), crop_gt.to(device)
         mask = targets > 0.001
 
         optimizer.zero_grad()
-        outputs = model(inputs)['out']
+        outputs = model(inputs, crop_img, crop_gt)['out']
         if mask_flag == False:
             loss = criterion(targets, outputs)
         else:
@@ -47,9 +49,12 @@ if __name__ == "__main__":
     mask_flag = True
     num_epochs = args.epochs
     lr = args.lr
+    img_size = (352, 704)
+    crop_size = (352, 176)
 
     # model = UNet(in_channels=3, num_classes=1).to(device)
-    model = MobileV3Unet(num_classes=1).to(device)
+    # model = MobileV3Unet(num_classes=1).to(device)
+    model = UNetWithCrossAttention(in_channels=3, num_classes=1, img_size=img_size, crop_size=crop_size).to(device)
     if mask_flag == False:
         criterion = DepthLoss()
     else:

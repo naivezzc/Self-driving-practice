@@ -8,7 +8,7 @@ import time
 import cv2
 from PIL import ImageFile
 from .transform_list import RandomCropNumpy, EnhancedCompose, RandomColor, RandomHorizontalFlip, ArrayToTensorNumpy, \
-    Normalize
+    Normalize, CenterCropNumpy
 from torchvision import transforms
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -16,6 +16,29 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 def _is_pil_image(img):
     return isinstance(img, Image.Image)
+
+def is_bool(gt):
+    return isinstance(gt, bool)
+
+def crop_right_half(img):
+    """
+    Crop the right half of the image.
+
+    Args:
+        img (Tensor): Image tensor with shape (C, H, W)
+
+    Returns:
+        cropped_img (Tensor): Cropped image tensor with shape (C, H, W//2)
+    """
+    _, h, w = img.shape
+
+    # Calculate the starting point of the right half
+    # left = w // 2
+    left = (3 * w) // 4
+
+    # Crop the right half
+    cropped_img = img[:, :, left:]
+    return cropped_img
 
 
 class MyDataset(data.Dataset):
@@ -145,11 +168,17 @@ class MyDataset(data.Dataset):
 
         rgb, gt, gt_dense = self.transform([rgb] + [gt] + [gt_dense], self.train)
 
+        crop_rgb = crop_right_half(rgb)
+        if is_bool(gt) == False:
+            crop_gt = crop_right_half(gt)
+        else:
+            crop_gt = False
+
         if self.return_filename is True:
             print(f"filename {rgb_file}")
-            return rgb, gt, gt_dense, rgb_file
+            return rgb, gt, gt_dense, rgb_file, crop_rgb, crop_gt
         else:
-            return rgb, gt, gt_dense
+            return rgb, gt, gt_dense, crop_rgb, crop_gt
 
     def __len__(self):
         return len(self.fileset)
@@ -166,12 +195,13 @@ class Transformer(object):
                 [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), None, None]
             ])
             self.test_transform = EnhancedCompose([
+                CenterCropNumpy((args.height, args.width)),
                 ArrayToTensorNumpy(),
                 [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), None, None]
             ])
         elif args.dataset == 'NYU':
             self.train_transform = EnhancedCompose([
-                RandomCropNumpy((args.height, args.width)),
+                CenterCropNumpy((args.height, args.width)),
                 RandomHorizontalFlip(),
                 [RandomColor(multiplier_range=(0.8, 1.2), brightness_mult_range=(0.75, 1.25)), None, None],
                 ArrayToTensorNumpy(),

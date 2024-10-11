@@ -18,7 +18,7 @@ def main(
     dataset_name: str = "av2",
     split_name: str = "val",
     num_accumulated_sweeps: int = 1,
-    max_iterations: int = 1,
+    max_iterations: int = 100,
 ) -> None:
     """Iterate over the detection data-loader.
 
@@ -67,10 +67,10 @@ def main(
             # Access track uuid.
             track_uuid = sweep.cuboids.track_uuid
 
-            print("Lidar_xyz_city {}".format(lidar_xyz_city))
-            print("xyzlwh_t {}".format(xyzlwh_t))
-            print("category {}".format(category))
-            print("track_uuid {}".format(track_uuid))
+            # print("Lidar_xyz_city {}".format(lidar_xyz_city))
+            # print("xyzlwh_t {}".format(xyzlwh_t))
+            # print("category {}".format(category))
+            # print("track_uuid {}".format(track_uuid))
 
         if i >= max_iterations:
             logger.info(f"Reached max iterations of {max_iterations}!")

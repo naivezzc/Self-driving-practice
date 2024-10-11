@@ -141,6 +141,40 @@ class RandomCropNumpy(object):
             results.append(img[y1:y1 + th, x1: x1 + tw, :])
         return results
 
+class CenterCropNumpy(object):
+    """Crops the given numpy array(s) at the center to have a region of
+    the given size. size can be a tuple (target_height, target_width)
+    or an integer, in which case the target will be of a square shape (size, size)
+    """
+    def __init__(self, size):
+        if isinstance(size, numbers.Number):
+            self.size = (int(size), int(size))
+        else:
+            self.size = size
+
+    def __call__(self, imgs):
+        results = []
+        h, w = imgs[0].shape[:2]
+        th, tw = self.size
+
+        if w == tw and h == th:
+            return imgs
+        # 计算中心裁剪的起始坐标
+        x1 = max(0, (w - tw) // 2)
+        y1 = max(0, (h - th) // 2)
+
+        for img in imgs:
+            if _is_numpy_image(img) is False:
+                results.append(img)
+                continue
+            # 从中心裁剪图像
+            results.append(img[y1:y1 + th, x1:x1 + tw, :])
+
+        return results
+
+def _is_numpy_image(img):
+    return isinstance(img, np.ndarray) and (img.ndim == 3 or img.ndim == 2)
+
 class RandomColor(object):
     """Random brightness, gamma, color, channel on numpy.ndarray (H x W x C) globally"""
     def __init__(self, multiplier_range=(0.9, 1.1), brightness_mult_range=(0.9, 1.1), random_state=np.random, dataset = 'KITTI'):

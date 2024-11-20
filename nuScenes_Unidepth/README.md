@@ -26,7 +26,7 @@ Other pakages is the same as [Unidepth](https://github.com/lpiccinelli-eth/UniDe
 CUDA is recommended for best performances. Version 11.7 was used during development
 
 ## Data Preparation
-- Donwload nuScenes mini data set from [nuScenes website](https://www.nuscenes.org/) (note: you can use  raw dataset download script (1 MB) )
+- Donwload nuScenes mini data set from [nuScenes website](https://www.nuscenes.org/) 
 
 - Follow Data preprocessing step by [BEVDepth](https://github.com/Megvii-BaseDetection/BEVDepth)
 - change the dataroot to your dataroot (e.g. '/home/zzhang/work/BEVDepth/data/nuScenes')

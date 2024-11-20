@@ -10,8 +10,9 @@ import torch.optim as optim
 from tqdm import tqdm
 import datetime
 import json
+from utils.noise import gaussian_noise
 
-def train(model, dataloader, criterion, optimizer, device, epoch, num_epochs, mask_flag = False):
+def train(model, dataloader, criterion, optimizer, device, epoch, num_epochs, mask_flag = False, add_noise = False, noise_mean = 0.0, noise_std=0.0):
     model.train()
     model.to(device)
     running_loss = 0.0
@@ -20,6 +21,8 @@ def train(model, dataloader, criterion, optimizer, device, epoch, num_epochs, ma
     for i, data in enumerate(progress_bar):
         inputs, targets, _, crop_img, crop_gt = data
         inputs, targets, crop_img, crop_gt = inputs.to(device), targets.to(device), crop_img.to(device), crop_gt.to(device)
+        if add_noise:
+            crop_gt = gaussian_noise(crop_gt, mean=noise_mean, std=noise_std)
         mask = targets > 0.001
 
         optimizer.zero_grad()
@@ -47,6 +50,9 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_set, batch_size=8, shuffle=True, num_workers=4)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     mask_flag = True
+    add_noise = True
+    noise_mean = 0.0
+    noise_std = 100.0
     num_epochs = args.epochs
     lr = args.lr
     img_size = (352, 704)
@@ -54,7 +60,7 @@ if __name__ == "__main__":
 
     # model = UNet(in_channels=3, num_classes=1).to(device)
     # model = MobileV3Unet(num_classes=1).to(device)
-    model = UNetWithCrossAttention(in_channels=3, num_classes=1, img_size=img_size, crop_size=crop_size).to(device)
+    model = UNetWithCrossAttention(in_channels=3, num_classes=1, img_size=img_size, crop_size=crop_size, attn_dim_qk=512, attn_dim_v=512).to(device)
     if mask_flag == False:
         criterion = DepthLoss()
     else:
@@ -63,7 +69,7 @@ if __name__ == "__main__":
 
     loss_his = []
     for epoch in range(num_epochs):
-        epoch_loss = train(model, train_loader, criterion, optimizer, device, epoch, num_epochs, mask_flag)
+        epoch_loss = train(model, train_loader, criterion, optimizer, device, epoch, num_epochs, mask_flag, add_noise=add_noise, noise_mean=noise_mean, noise_std=noise_std)
         loss_his.append(epoch_loss)
 
     # Save the trained model

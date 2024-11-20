@@ -72,28 +72,32 @@ class OutConv(nn.Sequential):
 
 
 class Attention(nn.Module):
-    def __init__(self, dim, num_heads=8, qkv_bias=False):
+    def __init__(self, dim_qk, dim_v, num_heads=8, qkv_bias=False):
         super(Attention, self).__init__()
         self.num_heads = num_heads
-        self.scale = (dim // num_heads) ** -0.5
+        self.scale = (dim_qk // num_heads) ** -0.5
 
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.qkv = nn.Linear(dim_qk, dim_qk * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(0.1)
-        self.proj = nn.Linear(dim, dim)
+        self.proj = nn.Linear(dim_v, dim_v)
         self.proj_drop = nn.Dropout(0.1)
 
+        self.qkv_depth = nn.Linear(dim_v, dim_v * 3, bias=qkv_bias)
+        self.proj_depth = nn.Linear(dim_v, dim_v)
+
     def forward(self, x_main, x_crop, crop_depth):
-        B, N_main, C = x_main.shape
+        B, N_main, C_qk = x_main.shape
+        _, _, C_v = crop_depth.shape
         N_crop = x_crop.shape[1]
         N_depth = crop_depth.shape[1]
 
-        qkv_main = self.qkv(x_main).reshape(B, N_main, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        qkv_main = self.qkv(x_main).reshape(B, N_main, 3, self.num_heads, C_qk // self.num_heads).permute(2, 0, 3, 1, 4)
         q_main, k_main, v_main = qkv_main[0], qkv_main[1], qkv_main[2]
 
-        qkv_crop = self.qkv(x_crop).reshape(B, N_crop, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        qkv_crop = self.qkv(x_crop).reshape(B, N_crop, 3, self.num_heads, C_qk // self.num_heads).permute(2, 0, 3, 1, 4)
         q_crop, k_crop, v_crop = qkv_crop[0], qkv_crop[1], qkv_crop[2]
 
-        qkv_depth = self.qkv(crop_depth).reshape(B, N_depth, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        qkv_depth = self.qkv_depth(crop_depth).reshape(B, N_depth, 3, self.num_heads, C_v // self.num_heads).permute(2, 0, 3, 1, 4)
         q_depth, k_depth, v_depth = qkv_depth[0], qkv_depth[1], qkv_depth[2]
 
         # print("QKV size", q_main.shape, k_crop.shape, v_depth.shape)
@@ -102,7 +106,7 @@ class Attention(nn.Module):
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
-        x = (attn @ v_depth).transpose(1, 2).reshape(B, N_main, C)
+        x = (attn @ v_depth).transpose(1, 2).reshape(B, N_main, C_v)
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
@@ -131,7 +135,7 @@ class Patch_Embed(nn.Module):
         return x
 
 class UNetWithCrossAttention(nn.Module):
-    def __init__(self, img_size, crop_size, in_channels, num_classes, attn_dim=512, num_heads=8, bilinear: bool = True, base_c: int = 64, patch_size=1, drop_ratio=0.):
+    def __init__(self, img_size, crop_size, in_channels, num_classes, attn_dim_qk=512, attn_dim_v=512, num_heads=8, bilinear: bool = True, base_c: int = 64, patch_size=1, drop_ratio=0.):
         super(UNetWithCrossAttention, self).__init__()
         self.in_channels = in_channels
         self.num_classes = num_classes
@@ -153,9 +157,10 @@ class UNetWithCrossAttention(nn.Module):
         self.down4 = Down(base_c * 8, base_c * 16 // factor)
 
         # Cross-Attention机制
-        self.cross_attention = Attention(dim=attn_dim, num_heads=num_heads, qkv_bias=False)
-        self.pos_embed_q = nn.Parameter(torch.zeros(1, self.num_q, attn_dim))  # Learnable positional embedding for Q
-        self.pos_embed_kv = nn.Parameter(torch.zeros(1, self.num_kv, attn_dim))  # Learnable positional embedding for K and V
+        self.cross_attention = Attention(dim_qk=attn_dim_qk, dim_v=attn_dim_v, num_heads=num_heads, qkv_bias=False)
+        self.pos_embed_q = nn.Parameter(torch.zeros(1, self.num_q, attn_dim_qk))  # Learnable positional embedding for Q
+        self.pos_embed_k = nn.Parameter(torch.zeros(1, self.num_kv, attn_dim_qk))  # Learnable positional embedding for K and V
+        self.pos_embed_v = nn.Parameter(torch.zeros(1, self.num_kv, attn_dim_v))  # Learnable positional embedding for K and V
         self.pos_drop = nn.Dropout(p=drop_ratio)
 
         # Decoder
@@ -166,9 +171,9 @@ class UNetWithCrossAttention(nn.Module):
         self.out_conv = OutConv(base_c, num_classes)
 
         # Patch Embedding
-        self.patch_feature = Patch_Embed(img_size=self.feature_size, patch_size=patch_size, in_c=512, embed_dim=attn_dim)
-        self.patch_crop_feature = Patch_Embed(img_size=self.crop_feature_size, patch_size=patch_size, in_c=512, embed_dim=attn_dim)
-        self.patch_depth = Patch_Embed(crop_size, patch_size=patch_size*16, in_c=1, embed_dim=attn_dim)
+        self.patch_feature = Patch_Embed(img_size=self.feature_size, patch_size=patch_size, in_c=512, embed_dim=attn_dim_qk)
+        self.patch_crop_feature = Patch_Embed(img_size=self.crop_feature_size, patch_size=patch_size, in_c=512, embed_dim=attn_dim_qk)
+        self.patch_depth = Patch_Embed(crop_size, patch_size=patch_size*16, in_c=1, embed_dim=attn_dim_v)
 
         # Attention feature up sampling
         self.attn_up1 = Attn_Up(base_c * 8, base_c * 4, bilinear)
@@ -212,8 +217,8 @@ class UNetWithCrossAttention(nn.Module):
         depth_token = self.patch_depth(crop_depth)
 
         q = self.pos_drop(x5_main_token + self.pos_embed_q)
-        k = self.pos_drop(x5_crop_token + self.pos_embed_kv)
-        v = self.pos_drop(depth_token + self.pos_embed_kv)
+        k = self.pos_drop(x5_crop_token + self.pos_embed_k)
+        v = self.pos_drop(depth_token + self.pos_embed_v)
 
         # print("x5 token", x5_main_token.shape, x5_crop_token.shape, depth_token.shape)
         # print("add pos embed token", q.shape, k.shape, v.shape)

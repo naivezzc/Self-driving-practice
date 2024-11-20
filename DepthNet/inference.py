@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 from loss.depth_loss import silog_loss
 from matplotlib.colors import Normalize
+from utils.noise import gaussian_noise
 from datasets.transform_list import CenterCropNumpy
 import os
 
@@ -58,17 +59,22 @@ def error_to_color(error_norm, error_mask, valid_mask):
     return color_image
 
 if __name__ == "__main__":
-    weight_path = "./weights/unet_2024_09_27_04_48.pth"
+    weight_path = "./weights/unet_25per_512_std100.pth"
     use_attn = True
+    add_noise = True
     # weight_path = args.weights
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     focal_length = 721.5377  # 焦距，单位：像素（来自KITTI）
     baseline = 0.532722      # 基线长度，单位：米（来自KITTI）
-
+    img_id = 28
+    noise_mean = 0.0
+    noise_std = 100
 
     test_set = MyDataset(args, train=False, return_filename=True)
-    aug_img, gt_depth, _, filename, crop_rgb, crop_gt = test_set[6]
+    aug_img, gt_depth, _, filename, crop_rgb, crop_gt = test_set[img_id]
     aug_img, gt_depth, crop_rgb, crop_gt = aug_img.to(device), gt_depth.to(device), crop_rgb.to(device), crop_gt.to(device)
+    if add_noise:
+        crop_gt = gaussian_noise(crop_gt, mean=noise_std, std=noise_std)
     crop_rgb, crop_gt = crop_rgb.unsqueeze(0), crop_gt.unsqueeze(0)
     aug_img = aug_img.unsqueeze(0)
     img = Image.open(filename)
@@ -94,8 +100,9 @@ if __name__ == "__main__":
     # model = UNetWithCrossAttention(in_channels=3, num_classes=1).to(device)
     img_size = (352, 704)
     crop_size = (352, 176)
+    qk_dim = 512
     if use_attn:
-        model = UNetWithCrossAttention(in_channels=3, num_classes=1, img_size=img_size, crop_size=crop_size).to(device)
+        model = UNetWithCrossAttention(in_channels=3, num_classes=1, img_size=img_size, crop_size=crop_size, attn_dim_qk=qk_dim, attn_dim_v=512).to(device)
     else:
         model = UNet(in_channels=3, num_classes=1).to(device)
 
@@ -118,14 +125,15 @@ if __name__ == "__main__":
     predict = output.squeeze().cpu().numpy()
     gt_depth = gt_depth.squeeze().cpu().numpy()
     aug_img = aug_img.squeeze().cpu().numpy()
+    gt_crop = crop_gt.squeeze().cpu().numpy()
 
     gt_disparity = depth_to_disparity(gt_depth, focal_length=focal_length, baseline=baseline)
     valid_mask = gt_disparity > 0
-    predict = predict * valid_mask
+    # predict = predict * valid_mask
     pred_disparity = depth_to_disparity(predict, focal_length=focal_length, baseline=baseline)
     d1_error, error_map = compute_d1_error(gt_disparity, pred_disparity)
-    print("pre_disparity", pred_disparity)
-    print("gt_disparity", gt_disparity)
+    # print("pre_disparity", pred_disparity)
+    # print("gt_disparity", gt_disparity)
     print(f'D1 Error: {d1_error:.2f}%')
 
 
@@ -156,9 +164,12 @@ if __name__ == "__main__":
     global_min = min(np.min(predict), np.min(gt_depth))
     global_max = max(np.max(predict), np.max(gt_depth))
     norm = Normalize(vmin=global_min, vmax=global_max)
+    # norm = Normalize(vmin=0.0, vmax=88.0)
+
+    print(global_min, global_max)
 
 
-    fig, axs = plt.subplots(6, 1, figsize=(20, 10))
+    fig, axs = plt.subplots(5, 1, figsize=(20, 10))
     axs[0].imshow(gt_depth,cmap=plt.get_cmap('inferno_r'), norm=norm)
     axs[0].axis('off')
     axs[0].set_title('gt_depth')
@@ -175,16 +186,25 @@ if __name__ == "__main__":
     axs[2].axis('off')
     axs[2].set_title('img')
 
-    axs[3].imshow(gt_disparity, cmap='plasma')
+    # axs[3].imshow(gt_disparity, cmap='plasma')
+    # axs[3].axis('off')
+    # axs[3].set_title('gt_disparity')
+    #
+    # axs[4].imshow(pred_disparity, cmap='plasma')
+    # axs[4].axis('off')
+    # axs[4].set_title('pred_disparity')
+
+    axs[3].imshow(error_color_map)
     axs[3].axis('off')
-    axs[3].set_title('gt_disparity')
+    axs[3].set_title('D1 error')
 
-    axs[4].imshow(pred_disparity, cmap='plasma')
+    axs[4].imshow(gt_crop, cmap=plt.get_cmap('inferno_r'), norm=norm)
     axs[4].axis('off')
-    axs[4].set_title('pred_disparity')
+    axs[4].set_title('gt crop')
 
-    axs[5].imshow(error_color_map)
-    axs[5].axis('off')
-    axs[5].set_title('D1 error')
+    save_dir = './result'
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, f'{img_id}_d1error_{d1_error:.2f}_silog_{loss:.2f}_t100_e{noise_std}.png')
 
+    plt.savefig(save_path)
     plt.show()

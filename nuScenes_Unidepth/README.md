@@ -29,7 +29,7 @@ CUDA is recommended for best performances. Version 11.7 was used during developm
 - Donwload nuScenes mini data set from [nuScenes website](https://www.nuscenes.org/) 
 
 - Follow Data preprocessing step by [BEVDepth](https://github.com/Megvii-BaseDetection/BEVDepth)
-- change the dataroot to your dataroot (e.g. '/home/zzhang/work/BEVDepth/data/nuScenes')
+- change the 'dataroot' in demo_on_nuscenes.py and eval.py to your dataroot (e.g. '/home/zzhang/work/BEVDepth/data/nuScenes')
 
 
 

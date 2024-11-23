@@ -1,15 +1,16 @@
 import numpy as np
 
-focal_length = 721.5377  # 焦距，单位：像素（来自KITTI）
 baseline = 0.532722  # 基线长度，单位：米（来自KITTI）
 def depth_to_disparity(depth, focal_length, baseline):
     # 避免除以零
     valid_mask = depth > 0
     disparity = np.zeros_like(depth)
     disparity[valid_mask] = (focal_length * baseline) / depth[valid_mask]
+    # print(f"Disparity range: min={disparity[valid_mask].min()}, max={disparity[valid_mask].max()}")
+    # print("focal length: {}".format(focal_length))
     return disparity
 
-def compute_d1_error(gt_disp, pred_disp):
+def compute_d1_error(gt_disp, pred_disp, abs_th, rel_th):
     # 有效像素掩码（真实视差大于0）
     mask = gt_disp > 0
 
@@ -17,7 +18,7 @@ def compute_d1_error(gt_disp, pred_disp):
     abs_diff = np.abs(gt_disp - pred_disp)
 
     # 误差条件
-    error_mask = (abs_diff > 3) & (abs_diff > 0.05 * gt_disp)
+    error_mask = (abs_diff > abs_th) & (abs_diff > rel_th * gt_disp)
 
     # 计算D1误差百分比
     error_pixels = np.sum(error_mask & mask)

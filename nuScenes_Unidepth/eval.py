@@ -52,6 +52,7 @@ def eval_model(model, dataloader, device):
     model.eval()
     running_loss = 0.0
     num_batches = len(dataloader)
+    loss_list = []
 
     with torch.no_grad():
         progress_bar = tqdm(dataloader, desc="Testing Progress")
@@ -69,16 +70,31 @@ def eval_model(model, dataloader, device):
                 outputs = predictions["depth"]
                 loss = silog_loss(depth_labels[:, :, img_id, :, :], outputs, variance_focus=1)
                 running_loss += loss.item()
+                loss_list.append(loss.item())
                 progress_bar.set_postfix({'loss': running_loss / ((i + 1) * 6)})
 
-    return running_loss / (num_batches * 6)
+    return running_loss / (num_batches * 6), loss_list
 
+def box_plot(loss_list):
+    '''
+    :param loss_list:  1 dimension list (e.g. [5.1, 5.2, 5.3, 5.4, 5.5, 5.6])
+    '''
+    plt.figure(figsize=(6, 8))
+    plt.boxplot(loss_list, vert=True, patch_artist=True)
+
+    plt.title("Boxplot of SILog on nuScenes dataset", fontsize=14)
+    plt.ylabel("SILog Values", fontsize=12)
+
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    plt.show()
 
 if __name__ == "__main__":
     test_loader = train_dataloader()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = UniDepthV1.from_pretrained("lpiccinelli/unidepth-v1-vitl14").to(device)
 
-    test_loss = eval_model(model, test_loader, device)
+    test_loss, loss_list = eval_model(model, test_loader, device)
+    box_plot(loss_list)
 
     print(f"SILog: {test_loss:.3f}")

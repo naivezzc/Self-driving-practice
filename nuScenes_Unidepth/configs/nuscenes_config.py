@@ -9,13 +9,13 @@ ida_aug_conf = {
     'resize_lim': (0.386, 0.55),
     'final_dim':
     final_dim,
-    'rot_lim': (-5.4, 5.4),
+    'rot_lim': (0.0, 0.0),
     'H':
     H,
     'W':
     W,
     'rand_flip':
-    True,
+    False,
     'bot_pct_lim': (0.0, 0.0),
     'cams': [
         'CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_LEFT',

@@ -1,47 +1,84 @@
 import numpy as np
 
-focal_length = 721.5377  # 焦距，单位：像素（来自KITTI）
-baseline = 0.532722  # 基线长度，单位：米（来自KITTI）
+focal_length = 721.5377  # Focal length in pixels (from KITTI dataset)
+baseline = 0.532722  # Baseline length in meters (from KITTI dataset)
 def depth_to_disparity(depth, focal_length, baseline):
-    # 避免除以零
+    """
+    Converts depth values to disparity values.
+
+    Parameters:
+        depth (numpy.ndarray): The depth map (values in meters).
+        focal_length (float): The focal length of the camera in pixels.
+        baseline (float): The baseline length of the stereo camera setup in meters.
+
+    Returns:
+        numpy.ndarray: The computed disparity map (values in pixels).
+    """
+    # Avoid division by zero
     valid_mask = depth > 0
     disparity = np.zeros_like(depth)
     disparity[valid_mask] = (focal_length * baseline) / depth[valid_mask]
     return disparity
 
 def compute_d1_error(gt_disp, pred_disp):
-    # 有效像素掩码（真实视差大于0）
+    """
+    Computes the D1 error percentage and generates an error map.
+
+    Parameters:
+        gt_disp (numpy.ndarray): Ground truth disparity map.
+        pred_disp (numpy.ndarray): Predicted disparity map.
+
+    Returns:
+        float: The D1 error percentage.
+        numpy.ndarray: A binary error map, where 1 indicates pixels with errors and 0 otherwise.
+    """
+
+    # Valid pixel mask (ground truth disparity > 0)
     mask = gt_disp > 0
 
-    # 计算绝对误差
+    # Calculate absolute error
     abs_diff = np.abs(gt_disp - pred_disp)
 
-    # 误差条件
+    # Error conditions
     error_mask = (abs_diff > 3) & (abs_diff > 0.05 * gt_disp)
 
-    # 计算D1误差百分比
+    # Compute D1 error percentage
     error_pixels = np.sum(error_mask & mask)
     total_pixels = np.sum(mask)
     d1_error = (error_pixels / total_pixels) * 100
 
-    # 生成误差图
+    # Generate error map
     error_map = np.zeros_like(gt_disp)
-    error_map[error_mask & mask] = 1  # 标记错误像素
+    error_map[error_mask & mask] = 1  # Mark error pixels
 
     return d1_error, error_map
 
 def error_to_color(error_norm, error_mask, valid_mask):
-    # 初始化颜色图像
+    """
+    Generates a color visualization of the error map.
+
+    Parameters:
+        error_norm (numpy.ndarray): Normalized error values (range [0, 1]).
+        error_mask (numpy.ndarray): Binary mask indicating erroneous pixels.
+        valid_mask (numpy.ndarray): Binary mask indicating valid pixels.
+
+    Returns:
+        numpy.ndarray: A color image representing the error map.
+                       - Blue channel: Correct predictions.
+                       - Red channel: Errors scaled by magnitude.
+                       - Black: Occluded or invalid pixels.
+    """
+    # Initialize color image
     H, W = error_norm.shape
     color_image = np.zeros((H, W, 3), dtype=np.float32)
 
-    # 正确预测的像素（蓝色）
+    # Correctly predicted pixels (blue channel)
     color_image[..., 2] = (~error_mask) & valid_mask  # 蓝色通道
 
-    # 预测错误的像素（红色调，根据误差大小）
+    # Incorrectly predicted pixels (red tones based on error magnitude)
     color_image[..., 0] = error_norm * error_mask     # 红色通道
 
-    # 遮挡和无效像素（黑色）
+    # Occluded and invalid pixels (black)
     color_image[~valid_mask] = 0
 
     return color_image

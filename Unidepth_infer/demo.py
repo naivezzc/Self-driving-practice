@@ -21,7 +21,7 @@ model = model.to(device)
 # rgb = torch.from_numpy(np.array(Image.open(img_path))).permute(2, 0, 1) # C, H, W
 
 test_set = MyDataset(args, train=False, return_filename=True)
-img_id = 101
+img_id = 122
 aug_img, gt_depth, _, filename, crop_rgb, crop_gt = test_set[img_id]
 
 # Center crop image to (352, 704)
@@ -56,23 +56,21 @@ d1_error, error_map = compute_d1_error(gt_disparity, pred_disparity)
 print(f'D1 Error: {d1_error:.2f}%')
 
 valid_mask = gt_disparity > 0
-# 计算每个像素的绝对误差 calculate absolute error on pixel wise
+# calculate absolute error on pixel wise
 abs_error = np.abs(pred_disparity - gt_disparity)
-# 计算相对误差 calculate relative error
+# calculate relative error
 rel_error = np.zeros_like(abs_error)
-# 仅在有效像素上计算相对误差
+# Compute relative error only on valid pixels
 rel_error[valid_mask] = abs_error[valid_mask] / gt_disparity[valid_mask]
 
 error_mask = ((abs_error > 3) & (rel_error > 0.05)) & valid_mask
-# 对误差值进行对数变换
-epsilon = 1e-6  # 防止对零取对数
+# Apply logarithmic transformation to error values
+epsilon = 1e-6  # Prevent logarithm of zero
 log_abs_error = np.log(abs_error + epsilon)
-# 将对数误差值归一化到 [0, 1] 范围
+# Normalize logarithmic error values to the range [0, 1]
 log_abs_error_norm = (log_abs_error - log_abs_error.min()) / (log_abs_error.max() - log_abs_error.min())
 error_color_map = error_to_color(log_abs_error_norm, error_mask, valid_mask)
-error_visual = np.zeros((gt_disparity.shape[0], gt_disparity.shape[1], 3))
-error_visual[..., 2] = (error_map == 0)  # 正确的像素显示为蓝色
-error_visual[..., 0] = error_map  # 错误的像素显示为红色
+
 print(f"predict shape: {predict.shape}")
 
 # Point Cloud in Camera Coordinate

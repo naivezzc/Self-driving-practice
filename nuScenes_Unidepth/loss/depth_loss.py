@@ -27,5 +27,11 @@ def silog_loss(prediction: Tensor, target: Tensor, variance_focus: float = 0.85)
     d = torch.log(prediction[non_zero_mask]) - torch.log(target[non_zero_mask])
     n = target[non_zero_mask].shape[0]
 
+    if n == 0:
+        return torch.tensor(0.0).to(d.device)
+
+    # print(f"predict d range: min={prediction.min()}, max={prediction.max()}")
+    # print(f"gt d range: min={target.min()}, max={target.max()}")
+
     # return torch.sqrt((d ** 2).mean() - variance_focus * (d.mean() ** 2)) * 10.0
     return torch.sqrt((d ** 2).mean() - variance_focus * 1 / (n**2) * (d.sum() ** 2)) * 100

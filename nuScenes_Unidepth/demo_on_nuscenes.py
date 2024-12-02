@@ -156,7 +156,7 @@ if __name__ == "__main__":
     single_data = data_batch
 
     # Print each data from a batch
-    # print_list_values_with_names(single_data, names)
+    print_list_values_with_names(single_data, names)
 
     # camera id in range (0, 5)
     for cam_id in range(6):
